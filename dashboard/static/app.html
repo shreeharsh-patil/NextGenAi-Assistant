@@ -1,0 +1,1067 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ULTRON // Holographic Command Interface</title>
+<style>
+:root{--r:#ff1728;--h:#ff6370;--l:rgba(255,65,77,.45);--g:rgba(19,0,4,.6);--i:#ffe8e9;--m:#b7787f}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#050001;color:var(--i);font:12px/1.35 Segoe UI,Arial,sans-serif;transition:background 0.4s ease, color 0.4s ease}
+button,input,select{font:inherit}
+#webgl{position:fixed;inset:0;z-index:0;background:radial-gradient(circle at 50% 42%,#280006,#060001 48%,#010001);transition:background 0.4s ease}
+#webgl canvas{display:block;width:100%;height:100%}
+.scan,.vig{position:fixed;inset:0;pointer-events:none;z-index:2}
+.scan{opacity:.3;background:repeating-linear-gradient(0deg,rgba(255,50,60,.04) 0 1px,transparent 1px 4px)}
+.scan:after{content:"";position:absolute;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--h),transparent);box-shadow:0 0 18px var(--r);animation:s 6s linear infinite}
+.vig{background:radial-gradient(ellipse,transparent 38%,rgba(0,0,0,.68))}
+@keyframes s{from{top:-2px}to{top:100%}}
+#app{position:relative;z-index:3;width:100%;height:100%;padding:18px;display:grid;grid-template-columns:minmax(185px,22vw) 1fr minmax(185px,22vw);grid-template-rows:auto 1fr auto;gap:14px;pointer-events:none;transition:box-shadow 0.4s ease}
+.top,.bottom,.panel,.modal,.voice{pointer-events:auto}
+.top{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{font-size:15px;font-weight:800;letter-spacing:.32em;text-shadow:0 0 18px var(--r);white-space:nowrap;transition:all 0.3s ease}
+.brand:before{content:"";display:inline-block;width:9px;height:9px;margin-right:10px;background:var(--r);box-shadow:0 0 17px 5px var(--r);transform:rotate(45deg)}
+#sys-status-badge{color:#ffadb3;font:10px Consolas,monospace;letter-spacing:.18em;margin-left:12px;transition:all 0.3s ease}
+.tele{display:flex;gap:14px;color:var(--m);font:11px Consolas,monospace;letter-spacing:.1em}
+.tele strong{color:var(--h)}
+.btn{border:1px solid var(--l);border-radius:2px;background:linear-gradient(135deg,rgba(255,30,45,.2),rgba(30,0,4,.45));padding:7px 10px;color:var(--i);letter-spacing:.11em;text-transform:uppercase;cursor:pointer;transition:all .2s ease}
+.btn:hover,.btn:focus-visible{outline:0;background:var(--r);color:#210003;border-color:#ffc4c8;box-shadow:0 0 18px var(--r)}
+.btn.rem-tab.active{background:var(--r);color:#100003;border-color:#ffc4c8;font-weight:700}
+.buttons,.dock{display:flex;gap:7px}
+.side{display:flex;flex-direction:column;gap:14px;min-height:0}
+.panel{position:relative;overflow:hidden;padding:13px;min-height:0;border:1px solid var(--l);background:linear-gradient(135deg,var(--g),rgba(5,0,1,.3));box-shadow:inset 0 0 32px rgba(255,20,35,.05);backdrop-filter:blur(8px);transition:all 0.3s ease}
+.panel:before{content:"";position:absolute;top:0;left:0;width:26px;height:18px;border-left:2px solid var(--h);border-top:2px solid var(--h)}
+.title{color:var(--h);font:700 10px Consolas,monospace;letter-spacing:.2em;text-transform:uppercase;margin-bottom:11px;transition:all 0.3s ease}
+.data{display:grid;grid-template-columns:1fr auto;gap:8px 10px;color:var(--m);font-family:Consolas,monospace}
+.data b{color:var(--i);font-weight:500}
+.events{flex:1;overflow:auto;min-height:120px}
+.events div{padding:8px 0;border-bottom:1px solid rgba(255,94,103,.12);color:var(--m)}
+.events strong{color:var(--h);font-weight:500}
+.bar{height:4px;margin:11px 0;background:rgba(255,255,255,.06)}
+.bar i{display:block;height:100%;width:var(--v,55%);background:linear-gradient(90deg,#760610,var(--h));box-shadow:0 0 12px var(--r);transition:width .4s}
+.core{position:relative;display:grid;place-items:center;min-height:0;text-align:center}
+.copy{margin-top:23vh;pointer-events:none;text-shadow:0 0 16px rgba(255,32,44,.8)}
+.copy h1{margin:0;padding-left:.44em;font-size:clamp(28px,4vw,52px);letter-spacing:.44em;transition:all 0.3s ease}
+.copy p{margin:8px 0;color:var(--h);font:11px Consolas,monospace;letter-spacing:.22em;transition:all 0.3s ease}
+.voice{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;width:min(570px,90%);padding:9px 10px 9px 14px;border:1px solid var(--l);background:rgba(15,0,3,.75);box-shadow:0 0 32px rgba(255,19,32,.14);transition:all 0.3s ease}
+.state{min-width:0;flex:1;color:var(--m);font:11px Consolas,monospace;letter-spacing:.1em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
+#voice-mic-btn{width:38px;height:38px;padding:0;border-radius:50%;font-size:16px}
+#voice-mic-btn.listening{background:var(--r);color:#200003;animation:pulse 1.2s infinite}
+@keyframes pulse{70%{box-shadow:0 0 0 13px rgba(255,29,44,0)}100%{box-shadow:0 0 0 0 rgba(255,29,44,0)}}
+.bottom{grid-column:1/-1;display:flex;justify-content:space-between;align-items:end;gap:14px}
+#boot{position:fixed;inset:0;z-index:20;display:grid;place-content:center;text-align:center;background:radial-gradient(circle,#210004,#030001 65%);transition:.45s}
+.hidden{opacity:0;visibility:hidden}
+.boot-logo{color:var(--h);font-size:28px;font-weight:800;letter-spacing:.5em;padding-left:.5em;text-shadow:0 0 25px var(--r)}
+#boot-log{margin:18px 0 10px;color:var(--m);font:11px Consolas,monospace;letter-spacing:.16em}
+.track{width:min(400px,78vw);height:2px;background:#3c060b}
+.track i{display:block;height:100%;width:0;background:var(--h);box-shadow:0 0 14px var(--r);transition:.18s}
+#alert{display:none;position:fixed;inset:0;z-index:15;pointer-events:none;background:rgba(255,0,10,.25);animation:a .45s infinite alternate}
+@keyframes a{from{background:rgba(255,0,15,.28);box-shadow:inset 0 0 150px rgba(255,0,0,.8)}to{background:rgba(180,0,10,.08);box-shadow:inset 0 0 50px rgba(150,0,0,.4)}}
+.modal{display:none;position:fixed;inset:0;z-index:10;padding:6vh 12px;background:rgba(0,0,0,.58)}
+.modal.active{display:grid;place-items:center}
+.card{width:min(660px,96vw);max-height:84vh;overflow:auto;padding:18px;border:1px solid var(--l);background:#120005;box-shadow:0 0 50px rgba(255,20,34,.25);transition:all 0.3s ease}
+.head{display:flex;justify-content:space-between;margin-bottom:14px;color:var(--h);font:700 11px Consolas,monospace;letter-spacing:.18em}
+.close{border:0;background:none;color:var(--i);font-size:18px;cursor:pointer}
+.feed{max-height:280px;overflow:auto}
+.msg{margin:7px 0;padding:8px 10px;border-left:2px solid var(--l);background:rgba(255,255,255,.025);color:#f2c8cb}
+.msg.user{border-color:#ff9da5;text-align:right}
+.row{display:flex;gap:8px;margin-top:12px}
+.input{min-width:0;flex:1;border:1px solid var(--l);background:#080001;color:var(--i);padding:9px 10px;outline:0}
+.input:focus{border-color:var(--h);box-shadow:0 0 13px var(--r)}
+.camera{width:100%;min-height:230px;object-fit:cover;background:#050001;border:1px solid var(--l)}
+#toasts{position:fixed;z-index:30;top:74px;right:18px;width:min(330px,80vw);pointer-events:none}
+.toast{padding:10px 12px;margin-bottom:8px;border:1px solid var(--l);background:rgba(24,0,5,.92);box-shadow:0 0 22px rgba(255,19,32,.16);color:var(--m)}
+.toast strong{display:block;color:var(--h);font-size:10px;letter-spacing:.14em;margin-bottom:3px}
+@media(max-width:850px){#app{grid-template-columns:1fr;padding:10px}.side,.tele{display:none}.copy{margin-top:20vh}.dock .btn:nth-child(n+5),.buttons .btn:not(.keep){display:none}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important}}
+.reactor-readout { position:absolute; top:17%; left:50%; transform:translateX(-50%); width:min(680px,86%); height:340px; pointer-events:none; }
+.reactor-readout::before,.reactor-readout::after { content:""; position:absolute; top:50%; width:105px; height:1px; background:linear-gradient(90deg,transparent,var(--h)); box-shadow:0 0 12px var(--r); }
+.reactor-readout::before { left:-22px; }.reactor-readout::after { right:-22px; transform:scaleX(-1); }
+.holo-card { position:absolute; width:116px; padding:7px 8px; border:1px solid var(--l); background:linear-gradient(120deg,rgba(255,23,40,.11),rgba(0,0,0,.05)); color:var(--h); font:9px/1.45 Consolas,monospace; letter-spacing:.12em; text-align:left; opacity:.68; text-shadow:0 0 8px var(--r); }
+.holo-card::before { content:""; position:absolute; inset:3px; border-left:1px solid var(--h); pointer-events:none; }
+.holo-card.left { left:0; top:53px; }.holo-card.right { right:0; bottom:36px; text-align:right; }.holo-card strong { display:block; color:var(--i); margin-bottom:4px; font-size:10px; }
+.breath-meter { position:absolute; left:50%; bottom:48px; transform:translateX(-50%); display:flex; align-items:center; gap:5px; opacity:.75; }
+.breath-meter i { width:2px; height:11px; background:var(--h); box-shadow:0 0 9px var(--r); animation:breathBars 1.8s ease-in-out infinite; }
+.breath-meter i:nth-child(2n) { animation-delay:.18s; height:18px; }.breath-meter i:nth-child(3n) { animation-delay:.35s; height:25px; }
+@keyframes breathBars { 50% { transform:scaleY(.35); opacity:.35; } }
+@media(max-width:850px){.reactor-readout{top:14%;height:300px}.holo-card{display:none}}
+
+/* --- THEME MATRIX VARIATIONS --- */
+body.theme-jarvis {
+  --r:#00e5ff; --h:#5ceaff; --l:rgba(0,229,255,.45); --g:rgba(0,35,45,.6); --i:#e0f9ff; --m:#6ecad8;
+}
+body.theme-jarvis #webgl {
+  background: radial-gradient(circle at 50% 42%,#002b36,#000b10 48%,#000305) !important;
+}
+body.theme-violet {
+  --r:#bd00ff; --h:#d966ff; --l:rgba(189,0,255,.45); --g:rgba(30,0,45,.6); --i:#fae6ff; --m:#c278db;
+}
+body.theme-violet #webgl {
+  background: radial-gradient(circle at 50% 42%,#280036,#0a0010 48%,#020005) !important;
+}
+body.theme-emerald {
+  --r:#00ff66; --h:#66ff99; --l:rgba(0,255,102,.45); --g:rgba(0,35,15,.6); --i:#e6ffe9; --m:#6ecfa2;
+}
+body.theme-emerald #webgl {
+  background: radial-gradient(circle at 50% 42%,#003612,#001005 48%,#000501) !important;
+}
+body.theme-gold {
+  --r:#ffaa00; --h:#ffcc66; --l:rgba(255,170,0,.45); --g:rgba(40,25,0,.6); --i:#fff8e6; --m:#d6ab65;
+}
+body.theme-gold #webgl {
+  background: radial-gradient(circle at 50% 42%,#362200,#100a00 48%,#050300) !important;
+}
+
+/* --- ENHANCED DARK RED EMERGENCY UI THEME --- */
+body.emergency-active {
+  --r: #ff001e;
+  --h: #ff2a3c;
+  --l: rgba(220, 0, 20, 0.85);
+  --g: rgba(40, 0, 5, 0.96);
+  --i: #ffd4d8;
+  --m: #dc4b55;
+  background: #080002 !important;
+}
+body.emergency-active #webgl {
+  background: radial-gradient(circle at 50% 42%, #4d0008, #150003 50%, #030001) !important;
+}
+body.emergency-active #app {
+  box-shadow: inset 0 0 140px rgba(255, 0, 20, 0.7);
+}
+body.emergency-active .panel {
+  background: linear-gradient(135deg, rgba(55, 0, 6, 0.96), rgba(15, 0, 3, 0.94)) !important;
+  border-color: #ff001e !important;
+  box-shadow: 0 0 35px rgba(255, 0, 30, 0.45), inset 0 0 25px rgba(255, 0, 30, 0.3) !important;
+}
+body.emergency-active .title {
+  color: #ff3344 !important;
+  text-shadow: 0 0 12px #ff001e;
+}
+body.emergency-active .brand {
+  color: #ff001e !important;
+  text-shadow: 0 0 25px #ff001e, 0 0 45px #ff0000;
+}
+body.emergency-active .btn {
+  border-color: #ff001e !important;
+  background: linear-gradient(135deg, rgba(220, 0, 20, 0.4), rgba(55, 0, 7, 0.85)) !important;
+  color: #ffffff !important;
+  text-shadow: 0 0 10px #ff001e;
+}
+#alert-btn.btn-alert-active {
+  background: linear-gradient(135deg, #ff001e, #88000f) !important;
+  color: #ffffff !important;
+  border-color: #ffb8be !important;
+  box-shadow: 0 0 30px #ff001e, inset 0 0 15px #ffffff !important;
+  animation: alertPulseBtn 0.75s infinite alternate !important;
+  font-weight: 800;
+}
+@keyframes alertPulseBtn {
+  0% { transform: scale(1); box-shadow: 0 0 20px #ff001e; }
+  100% { transform: scale(1.08); box-shadow: 0 0 40px #ff001e, 0 0 60px #ff0000; }
+}
+
+.emergency-top-banner {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 34px;
+  z-index: 100;
+  background: linear-gradient(90deg, #700, #ff001e, #700);
+  color: #ffffff;
+  font: bold 11px/34px Consolas, monospace;
+  letter-spacing: 0.25em;
+  text-align: center;
+  text-transform: uppercase;
+  box-shadow: 0 0 35px rgba(255, 0, 30, 0.95);
+  pointer-events: auto;
+  cursor: pointer;
+  animation: bannerGlowPulse 0.9s infinite alternate;
+}
+body.emergency-active .emergency-top-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+}
+@keyframes bannerGlowPulse {
+  0% { opacity: 0.85; }
+  100% { opacity: 1; filter: drop-shadow(0 0 14px #ffffff); }
+}
+
+/* --- TACTICAL RADAR WIDGET --- */
+@keyframes radarSweepRotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes blipFlash { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.3); } }
+</style>
+</head>
+<body>
+<div id="webgl"></div>
+<div class="scan"></div>
+<div class="vig"></div>
+<div id="alert"></div>
+<div id="emergency-banner" class="emergency-top-banner" onclick="toggleEmergencyLock(false)">
+  ⚠️ EMERGENCY PROTOCOL ACTIVE — ALL SYSTEMS SHUT DOWN [CLICK HERE TO RESTORE SYSTEM]
+</div>
+
+<div id="boot">
+  <div class="boot-logo">ULTRON</div>
+  <div id="boot-log">INITIALIZING HOLOGRAPHIC CORE</div>
+  <div class="track"><i id="boot-fill"></i></div>
+</div>
+
+<main id="app">
+  <header class="top">
+    <div class="brand">ULTRON <span id="sys-status-badge">CORE ONLINE</span></div>
+    <div class="tele">
+      <span>UPLINK <strong id="net-status">STABLE</strong></span>
+      <span id="clock-time"></span>
+      <span id="clock-date"></span>
+    </div>
+    <div class="buttons">
+      <select id="theme-select-box" class="btn keep" onchange="setUltronTheme(this.value)" style="padding:6px 8px">
+        <option value="ultron">🔴 Crimson Ultron</option>
+        <option value="jarvis">🩵 J.A.R.V.I.S Cyan</option>
+        <option value="violet">💜 Cyber Violet</option>
+        <option value="emerald">🟢 Matrix Emerald</option>
+        <option value="gold">💛 Arc Gold</option>
+      </select>
+      <button class="btn" onclick="openModal('chat')">Command</button>
+      <button class="btn keep" onclick="openModal('utilities')">Modules</button>
+      <button id="alert-btn" class="btn keep" onclick="toggleEmergencyLock()">Alert</button>
+    </div>
+  </header>
+
+  <aside class="side">
+    <section class="panel">
+      <div class="title">Cognitive matrix</div>
+      <div class="data">
+        <span>NEURAL LOAD</span><b id="cpu-load-val">--%</b>
+        <span>MEMORY</span><b id="ram-pct-lbl">--%</b>
+        <span>LINK</span><b>LOCAL</b>
+      </div>
+      <div class="bar"><i id="cpu-bar" style="--v:36%"></i></div>
+      <div class="title">Core activity</div>
+      <div id="memory-log-list" class="events">
+        <div><strong>SYS</strong> Visual systems initialized.</div>
+      </div>
+    </section>
+    
+    <!-- TACTICAL RADAR WIDGET -->
+    <section class="panel">
+      <div class="title">Tactical Radar</div>
+      <div style="position:relative;width:100%;height:95px;border:1px solid var(--l);background:rgba(0,0,0,0.5);overflow:hidden;border-radius:3px">
+        <div style="position:absolute;top:50%;left:0;right:0;height:1px;background:var(--l)"></div>
+        <div style="position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--l)"></div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:70px;height:70px;border:1px dashed var(--m);border-radius:50%"></div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:35px;height:35px;border:1px solid var(--h);border-radius:50%"></div>
+        <div style="position:absolute;top:50%;left:50%;width:100%;height:100%;transform-origin:0 0;background:conic-gradient(from 0deg, transparent 0deg, transparent 310deg, var(--l) 360deg);animation:radarSweepRotate 3.5s linear infinite"></div>
+        <div style="position:absolute;top:28%;left:62%;width:6px;height:6px;background:var(--h);border-radius:50%;box-shadow:0 0 8px var(--r);animation:blipFlash 1.4s infinite"></div>
+        <div style="position:absolute;top:68%;left:32%;width:5px;height:5px;background:var(--r);border-radius:50%;box-shadow:0 0 6px var(--r);animation:blipFlash 2s infinite"></div>
+        <span style="position:absolute;bottom:3px;right:6px;font:9px Consolas,monospace;color:var(--m)">RADAR ACTIVE • 02 TARGETS</span>
+      </div>
+    </section>
+  </aside>
+
+  <section class="core">
+    <div class="copy">
+      <h1 id="core-header-title">ULTRON</h1>
+      <p id="ai-state-disp">AWAITING VOICE INPUT</p>
+    </div>
+    <div class="voice">
+      <button id="voice-mic-btn" class="btn" onclick="toggleVoiceListening()">◉</button>
+      <span id="voice-status-lbl" class="state">SAY “WAKE UP ULTRON” OR ACTIVATE THE MICROPHONE</span>
+      <button class="btn" onclick="document.getElementById('image-upload-input').click()">Image</button>
+      <input id="image-upload-input" hidden type="file" accept="image/*" onchange="handleImageUpload(event)">
+    </div>
+  </section>
+
+  <aside class="side">
+    <section class="panel">
+      <div class="title">Hologram status</div>
+      <div class="data">
+        <span>MODE</span><b id="mode-readout">OBSERVING</b>
+        <span>VOICE</span><b id="voice-readout">READY</b>
+        <span>BLOOM</span><b>ENABLED</b>
+        <span>SCAN RATE</span><b>02.7 HZ</b>
+      </div>
+      <div class="bar"><i id="voice-bar" style="--v:18%"></i></div>
+    </section>
+    <section class="panel events">
+      <div class="title">Interaction feed</div>
+      <div id="interaction-log">
+        <div><strong>CORE</strong> Holographic renderer active.</div>
+      </div>
+    </section>
+  </aside>
+
+  <footer class="bottom">
+    <div class="dock">
+      <button class="btn" onclick="openModal('chat')">Chat</button>
+      <button class="btn" onclick="openModal('camera')">Camera</button>
+      <button id="reminders-badge" class="btn" onclick="openModal('reminders')">Reminders</button>
+      <button class="btn" onclick="openModal('files')">Files</button>
+    </div>
+    <button class="btn" onclick="triggerPowerAction('RESTART')">Reboot Visuals</button>
+  </footer>
+</main>
+
+<div id="chat" class="modal">
+  <section class="card">
+    <div class="head">ULTRON COMMAND CHANNEL<button class="close" onclick="closeModal('chat')">×</button></div>
+    <div id="chat-feed" class="feed"><div class="msg"><strong>ULTRON</strong> Command channel synchronized.</div></div>
+    <div class="row">
+      <input id="chat-input-field" class="input" placeholder="Enter a request or command" onkeydown="if(event.key==='Enter')sendChatMessage()">
+      <button class="btn" onclick="sendChatMessage()">Send</button>
+    </div>
+  </section>
+</div>
+
+<div id="camera" class="modal">
+  <section class="card">
+    <div class="head">VISION RECONNAISSANCE<button class="close" onclick="stopCameraStream();closeModal('camera')">×</button></div>
+    <video id="cam-video" class="camera" autoplay playsinline muted></video>
+    <div class="row">
+      <button class="btn" onclick="startCameraStream()">Start Camera</button>
+      <button class="btn" onclick="stopCameraStream()">Stop Camera</button>
+    </div>
+  </section>
+</div>
+
+<!-- OPTIMIZED REMINDER MATRIX MODAL -->
+<div id="reminders" class="modal">
+  <section class="card" style="width:min(720px,96vw)">
+    <div class="head">
+      <span>⏰ ULTRON REMINDER MATRIX</span>
+      <button class="close" onclick="closeModal('reminders')">×</button>
+    </div>
+    
+    <!-- Quick Presets -->
+    <div style="margin-bottom:12px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+      <span style="font-size:10px;color:var(--m)">QUICK PRESETS:</span>
+      <button class="btn" style="padding:4px 8px;font-size:9px" onclick="addQuickReminder('Tea / Coffee Break', 5)">+5m Tea</button>
+      <button class="btn" style="padding:4px 8px;font-size:9px" onclick="addQuickReminder('Quick Meeting', 15)">+15m Meeting</button>
+      <button class="btn" style="padding:4px 8px;font-size:9px" onclick="addQuickReminder('Short Rest Break', 30)">+30m Break</button>
+      <button class="btn" style="padding:4px 8px;font-size:9px" onclick="addQuickReminder('Deep Work Focus', 60)">+1h Focus</button>
+    </div>
+
+    <!-- Inputs -->
+    <div class="row">
+      <input id="rem-title-input" class="input" placeholder="What should Ultron remind you?">
+      <input id="rem-time-input" class="input" type="datetime-local">
+    </div>
+    <div class="row">
+      <select id="rem-prio-select" class="input">
+        <option value="high">🔴 High Priority</option>
+        <option value="med" selected>🟡 Medium Priority</option>
+        <option value="low">🔵 Low Priority</option>
+      </select>
+      <select id="rem-cat-select" class="input">
+        <option value="Personal">🎯 Personal</option>
+        <option value="Work">💻 Work</option>
+        <option value="Health">⏰ Health</option>
+        <option value="Study">📚 Study</option>
+      </select>
+      <button class="btn" style="white-space:nowrap" onclick="saveNewReminder()">Save Reminder</button>
+    </div>
+
+    <!-- Filter Tabs -->
+    <div style="margin:14px 0 8px;display:flex;gap:6px;border-bottom:1px solid var(--l);padding-bottom:6px">
+      <button id="tab-rem-all" class="btn rem-tab active" onclick="setRemFilter('all')">All</button>
+      <button id="tab-rem-active" class="btn rem-tab" onclick="setRemFilter('active')">Active</button>
+      <button id="tab-rem-high" class="btn rem-tab" onclick="setRemFilter('high')">🔴 High Priority</button>
+      <button id="tab-rem-done" class="btn rem-tab" onclick="setRemFilter('done')">Completed</button>
+    </div>
+
+    <!-- Reminder List -->
+    <div id="reminders-list-box" class="events" style="max-height:250px;overflow:auto"></div>
+  </section>
+</div>
+
+<div id="files" class="modal">
+  <section class="card">
+    <div class="head">SECURE FILE TRANSFER<button class="close" onclick="closeModal('files')">×</button></div>
+    <div class="row">
+      <input id="file-upload-input" class="input" type="file">
+      <button class="btn" onclick="uploadSelectedFile()">Upload</button>
+    </div>
+    <div id="file-grid-container" class="events">Connect from a remote session to access uploads.</div>
+  </section>
+</div>
+
+<div id="utilities" class="modal">
+  <section class="card">
+    <div class="head">SYSTEM MODULES<button class="close" onclick="closeModal('utilities')">×</button></div>
+    <div class="dock">
+      <button class="btn" onclick="sendBackendCommand('open chrome')">Open browser</button>
+      <button class="btn" onclick="sendBackendCommand('system status')">System status</button>
+      <button class="btn" onclick="toggleVoiceListening()">Toggle microphone</button>
+    </div>
+  </section>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+(()=>{
+'use strict';
+let ws, stream, muted, emergency = false, reminders = [];
+const $ = id => document.getElementById(id);
+const local = location.protocol === 'file:';
+const token = sessionStorage.getItem('ultron_token') || '__TOKEN__';
+const esc = v => String(v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const say = {
+  MUTED: 'MICROPHONE MUTED',
+  LISTENING: 'LISTENING FOR VOICE INPUT',
+  THINKING: 'PROCESSING NEURAL RESPONSE',
+  PROCESSING: 'PROCESSING NEURAL RESPONSE',
+  SPEAKING: 'ULTRON SPEAKING',
+  EMERGENCY: 'CRITICAL OVERLOAD — ALL SYSTEMS SHUT DOWN'
+};
+
+// --- HOLOGRAPHIC MATRIX SPECTRUM THEMES ---
+window.setUltronTheme = (themeName) => {
+  document.body.className = document.body.className.replace(/theme-\S+/g, '');
+  if (themeName !== 'ultron') {
+    document.body.classList.add(`theme-${themeName}`);
+  }
+  localStorage.setItem('ultron_theme', themeName);
+  const themeBox = $('theme-select-box');
+  if (themeBox) themeBox.value = themeName;
+  showToast('MATRIX SPECTRUM', `Theme switched to ${themeName.toUpperCase()}`);
+  window.dispatchEvent(new CustomEvent('ultron-theme-change', { detail: { theme: themeName } }));
+};
+
+// --- ULTRON VOICE & AUDIO EMERGENCY ENGINE ---
+function speakUltronEmergency(text) {
+  if (!('speechSynthesis' in window)) return;
+  try {
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    window.speechSynthesis.speak(utter);
+  } catch (e) {
+    console.warn('SpeechSynthesis error:', e);
+  }
+}
+
+if ('speechSynthesis' in window) {
+  window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+}
+
+function playEmergencySiren() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc1.type = 'sawtooth';
+    osc2.type = 'square';
+    
+    const now = ctx.currentTime;
+    
+    osc1.frequency.setValueAtTime(800, now);
+    osc1.frequency.linearRampToValueAtTime(450, now + 0.35);
+    osc1.frequency.linearRampToValueAtTime(800, now + 0.7);
+    osc1.frequency.linearRampToValueAtTime(450, now + 1.05);
+    osc1.frequency.linearRampToValueAtTime(800, now + 1.4);
+    
+    osc2.frequency.setValueAtTime(400, now);
+    osc2.frequency.linearRampToValueAtTime(220, now + 0.35);
+    osc2.frequency.linearRampToValueAtTime(400, now + 0.7);
+    osc2.frequency.linearRampToValueAtTime(220, now + 1.05);
+
+    gain.gain.setValueAtTime(0.2, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 1.7);
+
+    osc1.connect(gain);
+    osc2.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc1.start(now);
+    osc2.start(now);
+    osc1.stop(now + 1.7);
+    osc2.stop(now + 1.7);
+  } catch (e) {
+    console.warn('Siren audio error:', e);
+  }
+}
+
+// --- OPTIMIZED PERSISTENT REMINDER MATRIX & ALARM ENGINE ---
+function loadReminders() {
+  try {
+    const saved = localStorage.getItem('ultron_reminders');
+    reminders = saved ? JSON.parse(saved) : [];
+  } catch (e) {
+    reminders = [];
+  }
+}
+
+function saveRemindersToStorage() {
+  localStorage.setItem('ultron_reminders', JSON.stringify(reminders));
+}
+
+let remFilter = 'all';
+window.setRemFilter = (f) => {
+  remFilter = f;
+  document.querySelectorAll('.rem-tab').forEach(b => b.classList.remove('active'));
+  const activeBtn = $(`tab-rem-${f}`);
+  if (activeBtn) activeBtn.classList.add('active');
+  renderReminders();
+};
+
+window.addQuickReminder = (title, minutes) => {
+  const dt = new Date(Date.now() + minutes * 60000);
+  const localIso = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  reminders.push({
+    id: Date.now(),
+    title,
+    time: localIso,
+    prio: 'med',
+    cat: 'Personal',
+    done: false
+  });
+  saveRemindersToStorage();
+  renderReminders();
+  showToast('QUICK REMINDER SET', `${title} in ${minutes} minutes.`);
+};
+
+window.saveNewReminder = () => {
+  const titleInput = $('rem-title-input');
+  const timeInput = $('rem-time-input');
+  const title = titleInput.value.trim();
+  if (!title) return showToast('REMINDER ERROR', 'Please enter a reminder title.');
+
+  let timeVal = timeInput.value;
+  if (!timeVal) {
+    const dt = new Date(Date.now() + 30 * 60000);
+    timeVal = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  }
+
+  reminders.push({
+    id: Date.now(),
+    title,
+    time: timeVal,
+    prio: $('rem-prio-select').value || 'med',
+    cat: $('rem-cat-select').value || 'Personal',
+    done: false
+  });
+
+  titleInput.value = '';
+  saveRemindersToStorage();
+  renderReminders();
+  showToast('REMINDER SAVED', `"${title}" registered.`);
+};
+
+window.renderReminders = () => {
+  const container = $('reminders-list-box');
+  if (!container) return;
+
+  const prioBadges = { high: '🔴 HIGH', med: '🟡 MED', low: '🔵 LOW' };
+
+  let filtered = reminders.filter(r => {
+    if (remFilter === 'active') return !r.done;
+    if (remFilter === 'high') return r.prio === 'high' && !r.done;
+    if (remFilter === 'done') return r.done;
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = '<div style="color:var(--m);padding:14px;text-align:center">No reminders found in this view.</div>';
+    return;
+  }
+
+  container.innerHTML = filtered.map((r) => {
+    const origIndex = reminders.findIndex(x => x.id === r.id);
+    const dateFormatted = new Date(r.time).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+    return `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,94,103,.15);${r.done ? 'opacity:0.5;text-decoration:line-through' : ''}">
+        <div>
+          <strong style="color:var(--h);font-size:11px">${esc(r.title)}</strong>
+          <span style="font-size:9px;margin-left:6px;padding:1px 4px;border:1px solid var(--l);border-radius:2px">${prioBadges[r.prio] || 'MED'}</span>
+          <span style="font-size:9px;margin-left:4px;color:var(--m)">[${esc(r.cat)}]</span>
+          <br><span style="font-size:10px;color:var(--m)">📅 ${dateFormatted}</span>
+        </div>
+        <div style="display:flex;gap:4px">
+          ${!r.done ? `<button class="btn" style="padding:2px 6px;font-size:9px" onclick="snoozeReminder(${origIndex}, 5)">+5m</button>` : ''}
+          <button class="btn" style="padding:2px 6px;font-size:9px" onclick="toggleReminderDone(${origIndex})">${r.done ? 'Undo' : 'Done'}</button>
+          <button class="btn" style="padding:2px 6px;font-size:9px" onclick="deleteReminder(${origIndex})">✕</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  const activeCount = reminders.filter(r => !r.done).length;
+  const remBtn = $('reminders-badge');
+  if (remBtn) remBtn.textContent = activeCount > 0 ? `Reminders (${activeCount})` : 'Reminders';
+};
+
+window.snoozeReminder = (idx, mins) => {
+  if (!reminders[idx]) return;
+  const curr = new Date(reminders[idx].time).getTime() || Date.now();
+  const newTime = new Date(curr + mins * 60000);
+  reminders[idx].time = new Date(newTime.getTime() - newTime.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  reminders[idx].done = false;
+  saveRemindersToStorage();
+  renderReminders();
+  showToast('REMINDER SNOOZED', `"${reminders[idx].title}" snoozed for ${mins} mins.`);
+};
+
+window.toggleReminderDone = (idx) => {
+  if (!reminders[idx]) return;
+  reminders[idx].done = !reminders[idx].done;
+  saveRemindersToStorage();
+  renderReminders();
+};
+
+window.deleteReminder = (idx) => {
+  reminders.splice(idx, 1);
+  saveRemindersToStorage();
+  renderReminders();
+  showToast('REMINDER DELETED', 'Reminder removed.');
+};
+
+function playReminderChime() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const now = ctx.currentTime;
+
+    [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now + i * 0.12);
+      gain.gain.setValueAtTime(0.15, now + i * 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 0.4);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now + i * 0.12);
+      osc.stop(now + i * 0.12 + 0.4);
+    });
+  } catch (e) {}
+}
+
+function checkActiveReminders() {
+  const nowMs = Date.now();
+  reminders.forEach(r => {
+    if (!r.done && r.time) {
+      const remTimeMs = new Date(r.time).getTime();
+      if (remTimeMs > 0 && nowMs >= remTimeMs) {
+        r.done = true;
+        saveRemindersToStorage();
+        renderReminders();
+        playReminderChime();
+        speakUltronEmergency(`Attention! Reminder alert: ${r.title}`);
+        showToast('⏰ REMINDER ALERT!', r.title);
+        addMemoryLog(`REMINDER TRIGGERED: ${r.title}`);
+      }
+    }
+  });
+}
+setInterval(checkActiveReminders, 4000);
+
+window.showToast = (title, msg) => {
+  let x = document.createElement('div');
+  x.className = 'toast';
+  x.innerHTML = `<strong>${esc(title)}</strong>${esc(msg)}`;
+  $('toasts').append(x);
+  setTimeout(() => x.remove(), 4200);
+};
+
+window.addMemoryLog = t => {
+  let x = document.createElement('div');
+  x.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong> ${esc(t)}`;
+  $('memory-log-list').prepend(x);
+  $('interaction-log').prepend(x.cloneNode(true));
+};
+
+window.addChatMessage = (speaker, text) => {
+  let x = document.createElement('div'), user = /YOU|USER/i.test(speaker);
+  x.className = `msg ${user ? 'user' : ''}`;
+  x.innerHTML = `<strong>${user ? 'YOU' : 'ULTRON'}</strong> ${esc(text)}`;
+  $('chat-feed').append(x);
+  $('chat-feed').scrollTop = 999999;
+};
+
+window.updateAIState = s => {
+  s = String(s || 'LISTENING').toUpperCase();
+  if (emergency) {
+    s = 'EMERGENCY';
+  }
+  $('ai-state-disp').textContent = say[s] || s;
+  $('voice-status-lbl').textContent = say[s] || s;
+  $('mode-readout').textContent = s;
+  $('voice-readout').textContent = s === 'SPEAKING' ? 'ACTIVE' : s === 'MUTED' ? 'MUTED' : s === 'EMERGENCY' ? 'OFFLINE' : 'READY';
+  $('sys-status-badge').textContent = s === 'EMERGENCY' ? 'CRITICAL OVERLOAD — ALL SYSTEMS SHUT DOWN' : s === 'THINKING' ? 'THINKING' : 'CORE ONLINE';
+  $('voice-mic-btn').classList.toggle('listening', s === 'LISTENING' || s === 'SPEAKING');
+  $('voice-bar').style.setProperty('--v', s === 'SPEAKING' ? '96%' : s === 'LISTENING' ? '64%' : s === 'THINKING' ? '45%' : s === 'EMERGENCY' ? '0%' : '18%');
+  window.__ultronState = s;
+  window.dispatchEvent(new CustomEvent('ultron-state', { detail: { state: s } }));
+};
+
+window.openModal = id => {
+  $(id).classList.add('active');
+  if (id === 'files') refreshFiles();
+};
+window.closeModal = id => $(id).classList.remove('active');
+
+window.sendBackendCommand = t => {
+  if (!t) return;
+  document.title = 'CMD:' + t;
+  if (ws?.readyState === 1) ws.send(JSON.stringify({ type: 'command', text: t }));
+  else if (!local) fetch('/api/command', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(token !== '__TOKEN__' ? { Authorization: `Bearer ${token}` } : {}) },
+    body: JSON.stringify({ text: t })
+  }).catch(() => {});
+};
+
+window.toggleVoiceListening = () => {
+  if (emergency) return showToast('SYSTEM LOCKDOWN', 'Voice inputs disabled during emergency shutdown.');
+  muted = !muted;
+  sendBackendCommand('/toggle_mic');
+  updateAIState(muted ? 'MUTED' : 'LISTENING');
+};
+
+window.handleImageUpload = e => {
+  let f = e.target.files?.[0];
+  if (!f) return;
+  let r = new FileReader;
+  r.onload = () => {
+    let data = String(r.result).split(',')[1];
+    if (ws?.readyState === 1) ws.send(JSON.stringify({ type: 'image_attach', data, mime: f.type || 'image/jpeg' }));
+    addMemoryLog(`IMAGE ATTACHED: ${f.name}`);
+    showToast('IMAGE ATTACHED', 'Analysis sent to ULTRON.');
+    updateAIState('PROCESSING');
+  };
+  r.readAsDataURL(f);
+  e.target.value = '';
+};
+
+window.sendChatMessage = () => {
+  let input = $('chat-input-field'), t = input.value.trim();
+  if (t) {
+    addChatMessage('YOU', t);
+    input.value = '';
+    updateAIState('THINKING');
+    sendBackendCommand(t);
+  }
+};
+
+window.triggerPowerAction = a => {
+  if (a === 'RESTART') {
+    showToast('VISUAL CORE', 'Restarting holographic renderer.');
+    setTimeout(() => location.reload(), 450);
+  }
+};
+
+// --- ENHANCED EMERGENCY ALERT BUTTON FEATURE ---
+window.toggleEmergencyLock = f => {
+  emergency = f === undefined ? !emergency : Boolean(f);
+  const alertEl = $('alert');
+  const alertBtn = $('alert-btn');
+
+  if (emergency) {
+    document.body.classList.add('emergency-active');
+    if (alertEl) alertEl.style.display = 'block';
+
+    if (alertBtn) {
+      alertBtn.classList.add('btn-alert-active');
+      alertBtn.innerHTML = '⚠️ ALERT ACTIVE (SHUTDOWN)';
+    }
+
+    // Ultron Speaks: "Emergency! All systems have been shut down! Alert! Alert!"
+    speakUltronEmergency("Emergency! All systems have been shut down! Alert! Alert!");
+
+    // Dual-tone Siren sound
+    playEmergencySiren();
+
+    // UI Transformation to Dark Red Emergency Tone & Shutdown status
+    $('sys-status-badge').textContent = 'CRITICAL OVERLOAD — ALL SYSTEMS SHUT DOWN';
+    $('sys-status-badge').style.color = '#ff002b';
+    $('net-status').textContent = 'OFFLINE (SHUTDOWN)';
+    $('net-status').style.color = '#ff3344';
+    $('ai-state-disp').textContent = 'EMERGENCY: ALL SYSTEMS HAS BEEN SHUTDOWN';
+    $('core-header-title').textContent = 'SYSTEM SHUTDOWN';
+    $('voice-status-lbl').textContent = 'SYSTEM LOCKDOWN ACTIVE — PROTOCOLS TERMINATED';
+
+    $('cpu-load-val').textContent = '00%';
+    $('ram-pct-lbl').textContent = '00%';
+    if ($('cpu-bar')) $('cpu-bar').style.setProperty('--v', '0%');
+    if ($('ring-array-status')) $('ring-array-status').textContent = '00 OFFLINE';
+    if ($('reactor-tick-num')) $('reactor-tick-num').textContent = '00%';
+
+    addMemoryLog('CRITICAL: EMERGENCY SHUTDOWN PROTOCOL TRIGGERED');
+    addMemoryLog('WARNING: ULTRON SYSTEM HARDWARE & NEURAL CORES SHUT DOWN');
+    showToast('EMERGENCY SHUTDOWN', 'Emergency! All systems have been shut down!');
+  } else {
+    document.body.classList.remove('emergency-active');
+    if (alertEl) alertEl.style.display = 'none';
+
+    if (alertBtn) {
+      alertBtn.classList.remove('btn-alert-active');
+      alertBtn.innerHTML = 'Alert';
+    }
+
+    speakUltronEmergency("Emergency protocol cleared. All systems restoring to nominal operation.");
+
+    $('sys-status-badge').textContent = 'CORE ONLINE';
+    $('sys-status-badge').style.color = '#ffadb3';
+    $('net-status').textContent = 'STABLE';
+    $('net-status').style.color = 'var(--h)';
+    $('ai-state-disp').textContent = 'AWAITING VOICE INPUT';
+    $('core-header-title').textContent = 'ULTRON';
+    $('voice-status-lbl').textContent = 'SAY “WAKE UP ULTRON” OR ACTIVATE THE MICROPHONE';
+
+    $('cpu-load-val').textContent = '36%';
+    $('ram-pct-lbl').textContent = '42%';
+    if ($('cpu-bar')) $('cpu-bar').style.setProperty('--v', '36%');
+    if ($('ring-array-status')) $('ring-array-status').textContent = '06 ACTIVE';
+    if ($('reactor-tick-num')) $('reactor-tick-num').textContent = '100%';
+
+    addMemoryLog('SYSTEM: EMERGENCY LOCKDOWN DEACTIVATED. CORES ONLINE.');
+    showToast('SYSTEM RESTORED', 'Ultron core returned to online status.');
+  }
+
+  updateAIState(emergency ? 'EMERGENCY' : 'LISTENING');
+  window.dispatchEvent(new CustomEvent('ultron-alert', { detail: { active: emergency } }));
+};
+
+window.startCameraStream = async () => {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    $('cam-video').srcObject = stream;
+    showToast('VISION', 'Camera feed active.');
+  } catch {
+    showToast('VISION', 'Camera permission was not granted.');
+  }
+};
+
+window.stopCameraStream = () => {
+  stream?.getTracks().forEach(t => t.stop());
+  stream = null;
+  $('cam-video').srcObject = null;
+};
+
+window.uploadSelectedFile = async () => {
+  let f = $('file-upload-input').files?.[0];
+  if (!f) return showToast('TRANSFER', 'Choose a file first.');
+  try {
+    let form = new FormData;
+    form.append('file', f);
+    let r = await fetch('/api/upload', { method: 'POST', headers: token !== '__TOKEN__' ? { Authorization: `Bearer ${token}` } : {}, body: form }), d = await r.json();
+    if (!r.ok) throw Error(d.error);
+    showToast('TRANSFER COMPLETE', d.name);
+    refreshFiles();
+  } catch (e) {
+    showToast('TRANSFER FAILED', e.message || 'Unable to upload.');
+  }
+};
+
+window.refreshFiles = async () => {
+  if (local) return;
+  try {
+    let r = await fetch('/api/files', { headers: token !== '__TOKEN__' ? { Authorization: `Bearer ${token}` } : {} }), d = await r.json();
+    $('file-grid-container').innerHTML = (d.files || []).map(f => `<div><strong>${esc(f.name)}</strong><br>${f.size.toLocaleString()} bytes</div>`).join('') || 'No uploaded files.';
+  } catch {
+    $('file-grid-container').textContent = 'Remote file list unavailable.';
+  }
+};
+
+function receive(m) {
+  if (m.state || m.type === 'state') updateAIState(m.state || m.type);
+  if (m.speaker || ['log', 'speech_recognized', 'assistant_response', 'sys'].includes(m.type)) {
+    let who = (m.speaker || (m.type === 'speech_recognized' ? 'USER' : 'ULTRON')).toUpperCase(), text = m.text || '';
+    if (text) {
+      addChatMessage(who, text);
+      addMemoryLog(`${who}: ${text}`);
+      if (/ULTRON|ASSISTANT/.test(who)) showToast('ULTRON VOICE', text);
+    }
+  }
+  if (!emergency) {
+    if (m.cpu !== undefined) {
+      $('cpu-load-val').textContent = `${m.cpu}%`;
+      $('cpu-bar').style.setProperty('--v', `${m.cpu}%`);
+    }
+    if (m.mem !== undefined) $('ram-pct-lbl').textContent = `${m.mem}%`;
+  }
+}
+
+function connect() {
+  if (local) {
+    $('net-status').textContent = 'DESKTOP';
+    return;
+  }
+  let p = location.protocol === 'https:' ? 'wss:' : 'ws:', q = token === '__TOKEN__' ? '' : `?token=${encodeURIComponent(token)}`;
+  ws = new WebSocket(`${p}//${location.host}/ws${q}`);
+  ws.onopen = () => {
+    $('net-status').textContent = emergency ? 'OFFLINE (SHUTDOWN)' : 'STABLE';
+    showToast('BACKEND CONNECTED', 'ULTRON neural core online.');
+  };
+  ws.onmessage = e => {
+    try { receive(JSON.parse(e.data)); } catch {}
+  };
+  ws.onclose = () => {
+    $('net-status').textContent = 'RECONNECTING';
+    setTimeout(connect, 2000);
+  };
+}
+
+function clock() {
+  let d = new Date;
+  $('clock-time').textContent = d.toLocaleTimeString();
+  $('clock-date').textContent = d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: '2-digit' }).toUpperCase();
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.querySelectorAll('.modal.active').forEach(x => x.classList.remove('active'));
+  if (e.ctrlKey && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    openModal('chat');
+    $('chat-input-field').focus();
+  }
+});
+
+clock();
+setInterval(clock, 1000);
+
+loadReminders();
+renderReminders();
+const savedTheme = localStorage.getItem('ultron_theme');
+if (savedTheme) setUltronTheme(savedTheme);
+
+updateAIState('LISTENING');
+connect();
+
+let n = 0, tid = setInterval(() => {
+  n += 20;
+  $('boot-fill').style.width = `${n}%`;
+  $('boot-log').textContent = n < 60 ? 'ASSEMBLING ENERGY RINGS' : n < 100 ? 'SYNCHRONIZING VOICE REACTIVITY' : 'HOLOGRAPHIC COMMAND CORE READY';
+  if (n >= 100) {
+    clearInterval(tid);
+    setTimeout(() => $('boot').classList.add('hidden'), 240);
+  }
+}, 130);
+})();
+</script>
+
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.1/examples/jsm/"}}</script>
+
+<script type="module">
+  import * as THREE from 'three';
+  import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+  import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+  import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+  try {
+    const mount = document.querySelector('#webgl');
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(44, innerWidth / innerHeight, .1, 100);
+    camera.position.set(0, .1, 13);
+    const renderer = new THREE.WebGLRenderer({ alpha:true, antialias:true, powerPreference:'high-performance' });
+    renderer.setClearColor(0x000000, 0);
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.domElement.style.position = 'absolute';
+    renderer.domElement.style.inset = '0';
+    renderer.domElement.style.pointerEvents = 'none';
+    mount.append(renderer.domElement);
+    const composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+    const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 1.7, .68, .08);
+    composer.addPass(bloom);
+
+    let mainColorHex = 0xff1b2d;
+    const hot = 0xff9ba3;
+    const additive = (color, opacity) => new THREE.MeshBasicMaterial({ color, transparent:true, opacity, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide });
+    const reactor = new THREE.Group();
+    reactor.position.y = .12;
+    scene.add(reactor);
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(1.32, 2.5, 7.7, 48, 1, true), additive(mainColorHex, .045));
+    reactor.add(beam);
+    const core = new THREE.Group();
+    reactor.add(core);
+    core.add(new THREE.Mesh(new THREE.SphereGeometry(.76, 36, 22), additive(0xffd7dc, .84)));
+    const coreWireMesh = new THREE.Mesh(new THREE.SphereGeometry(1.08, 36, 22), new THREE.MeshBasicMaterial({ color:mainColorHex, wireframe:true, transparent:true, opacity:.44, blending:THREE.AdditiveBlending, depthWrite:false }));
+    core.add(coreWireMesh);
+    const reactorRings = [];
+    [[1.32,.075,0],[1.75,.028,.7],[2.18,.05,1.57],[2.77,.025,2.2],[3.2,.04,.35]].forEach(([radius,tube,angle], index) => {
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(radius, tube, 10, 144), additive(index === 0 ? 0xffd7dc : mainColorHex, index === 0 ? .93 : .75));
+      ring.rotation.set(angle, angle * .6, angle * .32);
+      reactor.add(ring);
+      reactorRings.push({ ring, direction:index % 2 ? 1 : -1, speed:.008 + index * .002 });
+    });
+    const ticks = new THREE.Group();
+    for (let i = 0; i < 72; i++) {
+      const a = i / 72 * Math.PI * 2, major = i % 6 === 0, radius = 3.58, length = major ? .29 : .13;
+      const geometry = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(Math.cos(a)*radius, Math.sin(a)*radius, 0), new THREE.Vector3(Math.cos(a)*(radius+length), Math.sin(a)*(radius+length), 0)]);
+      ticks.add(new THREE.Line(geometry, new THREE.LineBasicMaterial({ color:hot, transparent:true, opacity:major ? .72 : .25, blending:THREE.AdditiveBlending })));
+    }
+    reactor.add(ticks);
+    const satellites = new THREE.Group();
+    [[-4.2,1.7,.45],[4.1,-1.25,-.35],[-3.65,-2.35,-.2]].forEach(([x,y,z],i) => {
+      const shard = new THREE.Mesh(new THREE.IcosahedronGeometry(.42+i*.1, 1), new THREE.MeshBasicMaterial({color:mainColorHex,wireframe:true,transparent:true,opacity:.48,blending:THREE.AdditiveBlending,depthWrite:false}));
+      shard.position.set(x,y,z); satellites.add(shard);
+    });
+    scene.add(satellites);
+
+    const overlay = document.createElement('div');
+    overlay.className = 'reactor-readout';
+    overlay.innerHTML = '<div class="holo-card left"><strong>ARC REACTOR</strong>ENERGY CELL: STABLE<br>MAGNETIC SEAL: 100%<br>PHASE ARRAY: LOCKED</div><div class="holo-card right"><strong>ULTRON NEURAL LINK</strong>VOICE RESONANCE: LIVE<br>COGNITIVE LATTICE: SYNCED<br>THREAT VECTOR: NULL</div><div class="breath-meter">' + '<i></i>'.repeat(19) + '</div>';
+    document.querySelector('.core').append(overlay);
+
+    let target = .38, energy = .38, alert = false, pointerX = 0, pointerY = 0;
+    const stateEnergy = { LISTENING:.76, THINKING:.54, PROCESSING:.58, SPEAKING:1.18, MUTED:.12, EMERGENCY:1.65 };
+    addEventListener('ultron-state', event => { target = stateEnergy[event.detail && event.detail.state] || .36; });
+    addEventListener('ultron-alert', event => { alert = Boolean(event.detail && event.detail.active); });
+    addEventListener('pointermove', event => { pointerX=(event.clientX/innerWidth-.5)*.5; pointerY=(event.clientY/innerHeight-.5)*.28; });
+    
+    // Listen for Theme Matrix Change and Update Three.js Materials
+    addEventListener('ultron-theme-change', event => {
+      const theme = event.detail && event.detail.theme;
+      const themeColors = {
+        ultron: 0xff1b2d,
+        jarvis: 0x00e5ff,
+        violet: 0xbd00ff,
+        emerald: 0x00ff66,
+        gold: 0xffaa00
+      };
+      const newHex = themeColors[theme] || 0xff1b2d;
+      beam.material.color.setHex(newHex);
+      coreWireMesh.material.color.setHex(newHex);
+      reactorRings.forEach(({ ring }, idx) => {
+        ring.material.color.setHex(idx === 0 ? 0xffffff : newHex);
+      });
+      satellites.children.forEach(shard => {
+        shard.material.color.setHex(newHex);
+      });
+    });
+
+    if (window.__ultronState) dispatchEvent(new CustomEvent('ultron-state', { detail:{ state:window.__ultronState } }));
+    const clock = new THREE.Clock();
+    function frame() {
+      const time = clock.getElapsedTime();
+      energy += (target + (alert ? .55 : 0) - energy) * .075;
+      const breath = .5 + .5 * Math.sin(time * (alert ? 4.5 : target > .9 ? 3.4 : 1.35));
+      reactor.scale.setScalar(1 + breath * .032 + energy * .035);
+      core.scale.setScalar(1 + breath * .15 + energy * .09);
+      core.rotation.y += .012 * (1 + energy * 1.5);
+      reactor.rotation.y += (pointerX - reactor.rotation.y) * .025;
+      reactor.rotation.x += (-pointerY - reactor.rotation.x) * .022;
+      reactorRings.forEach(({ring, direction, speed}) => { ring.rotation.z += direction * speed * (1 + energy * 1.8); ring.rotation.x += direction * speed * .22; });
+      ticks.rotation.z = -time * (alert ? .45 : .16);
+      satellites.rotation.z = time * .13;
+      satellites.children.forEach((shard,i) => { shard.rotation.x += .006+i*.001; shard.rotation.y += .009; shard.position.y += Math.sin(time*1.7+i)*.002; });
+      bloom.strength = 1.05 + energy * .95 + (alert ? 1.2 : 0);
+      composer.render();
+      requestAnimationFrame(frame);
+    }
+    frame();
+    addEventListener('resize', () => { camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); composer.setSize(innerWidth,innerHeight); });
+  } catch (error) { console.warn('ULTRON reactor layer unavailable', error); }
+</script>
+</body>
+</html>

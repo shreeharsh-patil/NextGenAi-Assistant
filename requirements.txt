@@ -1,0 +1,46 @@
+PyQt6
+PyQt6-WebEngine
+sounddevice
+google-genai
+google-generativeai
+pillow
+requests
+beautifulsoup4
+duckduckgo-search
+playwright
+pyautogui
+pyperclip
+pygetwindow
+opencv-python
+numpy
+mss
+psutil
+send2trash
+youtube-transcript-api
+python-pptx
+fastapi
+uvicorn[standard]
+cryptography
+python-multipart
+comtypes; sys_platform == "win32"
+pycaw; sys_platform == "win32"
+win10toast; sys_platform == "win32"
+pywinauto; sys_platform == "win32"
+pywin32; sys_platform == "win32"
+qrcode[pil]
+SpeechRecognition
+
+# ── Universal File Processor (actions/file_processor.py) ─────────────────────
+PyPDF2
+pdfplumber
+python-docx
+pandas
+pydub
+
+# ── System telemetry extras (actions/system_monitor.py) ──────────────────────
+pynvml
+WMI; sys_platform == "win32"
+
+# ── Offline / cloud TTS engines (core/tts.py) ────────────────────────────────
+edge-tts
+miniaudio

@@ -1,0 +1,42 @@
+# ─── Python Bytecode & Caches ──────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+
+# ─── PyInstaller & Build Outputs ───────────────────
+build/
+dist/
+Release/
+*.spec
+
+# ─── Inno Setup ────────────────────────────────────
+installer.iss
+
+# ─── Build Scripts (dev-only) ──────────────────────
+build_release.py
+
+# ─── Local Environment & Secrets ───────────────────
+.venv/
+env/
+venv/
+ENV/
+config/api_keys.json
+
+# ─── Setup Marker (generated locally) ─────────────
+.ultron_setup_complete
+
+# ─── IDE / OS Caches ──────────────────────────────
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Scratch & Temp ───────────────────────────────
+scratch/
+
+# ─── Memory Runtime Data ──────────────────────────
+memory/long_term.json
+memory/cmr_records.json
+memory/reminders.json
