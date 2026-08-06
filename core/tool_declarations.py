@@ -421,4 +421,85 @@ TOOL_DECLARATIONS = [
             "required": ["category", "key", "value"]
         }
     },
+    {
+        "name": "recall_memory",
+        "description": (
+            "Semantic memory recall. Searches past conversation snippets, notes, "
+            "and saved context by meaning (not exact keywords) and returns the most "
+            "related entries. Call when the user references something discussed earlier "
+            "or asks 'do you remember...'. Do NOT call for the current conversation "
+            "topic that is already in context."
+        ),
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "query": {"type": "STRING", "description": "Topic or question to recall, in the user's own words"},
+                "k":     {"type": "INTEGER", "description": "Number of results (default: 5)"},
+            },
+            "required": ["query"]
+        }
+    },
+    {
+        "name": "email_send",
+        "description": (
+            "Sends an email via Gmail. Call when the user asks to send/compose an email. "
+            "Requires Google OAuth to be configured on first use."
+        ),
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "to":      {"type": "STRING", "description": "Recipient email address"},
+                "subject": {"type": "STRING", "description": "Email subject line"},
+                "body":    {"type": "STRING", "description": "Email body text"},
+            },
+            "required": ["to"]
+        }
+    },
+    {
+        "name": "email_read",
+        "description": (
+            "Reads recent emails from the Gmail inbox. Call when the user asks "
+            "about their emails, messages, or inbox."
+        ),
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "max_results": {"type": "INTEGER", "description": "How many emails to fetch (default: 5)"},
+                "query":       {"type": "STRING",  "description": "Optional Gmail search query (e.g. 'from:boss', 'subject:invoice')"},
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "calendar_list",
+        "description": (
+            "Lists upcoming Google Calendar events. Call when the user asks what's "
+            "on their calendar / schedule / today / this week."
+        ),
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "days": {"type": "INTEGER", "description": "How many days ahead to look (default: 1)"},
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "calendar_add",
+        "description": (
+            "Creates an event on the user's Google Calendar. Call when the user asks "
+            "to schedule/add/remind them of an appointment or meeting."
+        ),
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "title":       {"type": "STRING",  "description": "Event title"},
+                "date":        {"type": "STRING",  "description": "Event date in YYYY-MM-DD"},
+                "time":        {"type": "STRING",  "description": "Start time in HH:MM (24h)"},
+                "duration_min":{"type": "INTEGER", "description": "Duration in minutes (default: 60)"},
+                "description": {"type": "STRING",  "description": "Optional event description"},
+            },
+            "required": ["title", "date", "time"]
+        }
+    },
 ]

@@ -40,3 +40,11 @@ scratch/
 memory/long_term.json
 memory/cmr_records.json
 memory/reminders.json
+memory/rag_store.json
+
+# ─── Logs ─────────────────────────────────────────
+logs/
+
+# ─── Google OAuth (local secrets) ─────────────────
+config/token.json
+config/client_secret.json

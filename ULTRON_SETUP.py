@@ -16,6 +16,10 @@ import json
 from datetime import datetime
 from pathlib import Path
 
+from utils.logger import configure_logging, get_logger
+
+logger = get_logger("ultron.setup")
+
 # Ensure UTF-8 output
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
@@ -34,26 +38,26 @@ MARKER_FILES = [
 ]
 
 def print_separator():
-    print("=" * 60)
+    logger.info("=" * 60)
 
 def show_manual_download_error():
     print_separator()
-    print(" AUTOMATIC DOWNLOAD FAILED")
+    logger.info(" AUTOMATIC DOWNLOAD FAILED")
     print_separator()
-    print("")
-    print(" Please download ULTRON manually:")
-    print("")
-    print(" Option 1 (Git):")
-    print(f"   git clone {REPO_URL_GIT}")
-    print("")
-    print(" Option 2 (Direct ZIP):")
-    print(f"   {REPO_URL_ZIP}")
-    print("")
-    print(" After downloading, extract all files into this folder:")
-    print(f"   {SCRIPT_DIR}")
-    print("")
-    print(" Then run this setup script again:")
-    print("   python ULTRON_SETUP.py")
+    logger.info("")
+    logger.info(" Please download ULTRON manually:")
+    logger.info("")
+    logger.info(" Option 1 (Git):")
+    logger.info(f"   git clone {REPO_URL_GIT}")
+    logger.info("")
+    logger.info(" Option 2 (Direct ZIP):")
+    logger.info(f"   {REPO_URL_ZIP}")
+    logger.info("")
+    logger.info(" After downloading, extract all files into this folder:")
+    logger.info(f"   {SCRIPT_DIR}")
+    logger.info("")
+    logger.info(" Then run this setup script again:")
+    logger.info("   python ULTRON_SETUP.py")
     print_separator()
 
 def check_marker_files():
@@ -70,10 +74,10 @@ def check_marker_files():
     return True
 
 def download_from_github():
-    print("[INFO] Attempting to download ULTRON from GitHub...")
+    logger.info("[INFO] Attempting to download ULTRON from GitHub...")
     # Try Git clone
     try:
-        print("[INFO] Trying git clone...")
+        logger.info("[INFO] Trying git clone...")
         result = subprocess.run(
             ["git", "clone", REPO_URL_GIT, "."],
             cwd=str(SCRIPT_DIR),
@@ -81,20 +85,20 @@ def download_from_github():
             text=True
         )
         if result.returncode == 0:
-            print("[INFO] Git clone successful.")
+            logger.info("[INFO] Git clone successful.")
             return True
         else:
-            print("[WARN] Git clone failed. Git might not be installed or directory is not empty.")
+            logger.warning("[WARN] Git clone failed. Git might not be installed or directory is not empty.")
     except Exception as e:
-        print(f"[WARN] Git clone error: {e}")
+        logger.warning(f"[WARN] Git clone error: {e}")
 
     # Try ZIP download
     try:
-        print("[INFO] Trying direct ZIP download...")
+        logger.info("[INFO] Trying direct ZIP download...")
         zip_path = SCRIPT_DIR / "ultron_temp.zip"
         urllib.request.urlretrieve(REPO_URL_ZIP, zip_path)
         
-        print("[INFO] Extracting ZIP...")
+        logger.info("[INFO] Extracting ZIP...")
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             # Need to extract contents of the inner folder, usually ULTRON-main
             temp_extract = SCRIPT_DIR / "temp_extract"
@@ -114,62 +118,62 @@ def download_from_github():
         if zip_path.exists():
             zip_path.unlink()
             
-        print("[INFO] ZIP download and extraction successful.")
+        logger.info("[INFO] ZIP download and extraction successful.")
         return True
     except Exception as e:
-        print(f"[WARN] ZIP download failed: {e}")
+        logger.warning(f"[WARN] ZIP download failed: {e}")
         
     return False
 
 def check_python_version():
-    print("[INFO] Checking Python version...")
+    logger.info("[INFO] Checking Python version...")
     if sys.version_info < (3, 10):
-        print(f"[ERROR] Python 3.10 or higher is required. Found Python {sys.version_info.major}.{sys.version_info.minor}")
+        logger.error(f"[ERROR] Python 3.10 or higher is required. Found Python {sys.version_info.major}.{sys.version_info.minor}")
         sys.exit(1)
-    print(f"[OK] Python {sys.version_info.major}.{sys.version_info.minor} verified.")
+    logger.info(f"[OK] Python {sys.version_info.major}.{sys.version_info.minor} verified.")
 
 def upgrade_pip():
-    print("[INFO] Upgrading pip...")
+    logger.info("[INFO] Upgrading pip...")
     try:
         subprocess.run([sys.executable, "-m", "pip", "install", "--upgrade", "pip"], 
                        capture_output=True, check=True)
-        print("[OK] Pip upgraded quietly.")
+        logger.info("[OK] Pip upgraded quietly.")
     except Exception as e:
-        print(f"[WARN] Failed to upgrade pip: {e}")
+        logger.warning(f"[WARN] Failed to upgrade pip: {e}")
 
 def install_requirements():
-    print("[INFO] Installing requirements.txt...")
+    logger.info("[INFO] Installing requirements.txt...")
     req_file = SCRIPT_DIR / "requirements.txt"
     if not req_file.exists():
-        print(f"[ERROR] {req_file.name} not found!")
+        logger.error(f"[ERROR] {req_file.name} not found!")
         sys.exit(1)
         
     try:
         subprocess.run([sys.executable, "-m", "pip", "install", "-r", str(req_file)], 
                        check=True)
-        print("[OK] Requirements installed.")
+        logger.info("[OK] Requirements installed.")
     except subprocess.CalledProcessError as e:
-        print(f"[ERROR] Failed to install requirements: {e}")
+        logger.error(f"[ERROR] Failed to install requirements: {e}")
         sys.exit(1)
     except Exception as e:
-        print(f"[ERROR] Unexpected error installing requirements: {e}")
+        logger.error(f"[ERROR] Unexpected error installing requirements: {e}")
         sys.exit(1)
 
 def install_playwright_chromium():
-    print("[INFO] Installing Playwright Chromium...")
+    logger.info("[INFO] Installing Playwright Chromium...")
     try:
         subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], 
                        check=True)
-        print("[OK] Playwright Chromium installed.")
+        logger.info("[OK] Playwright Chromium installed.")
     except subprocess.CalledProcessError as e:
-        print(f"[ERROR] Failed to install Playwright Chromium: {e}")
+        logger.error(f"[ERROR] Failed to install Playwright Chromium: {e}")
         sys.exit(1)
     except Exception as e:
-        print(f"[ERROR] Unexpected error installing Playwright Chromium: {e}")
+        logger.error(f"[ERROR] Unexpected error installing Playwright Chromium: {e}")
         sys.exit(1)
 
 def setup_api_keys():
-    print("[INFO] Setting up config/api_keys.json...")
+    logger.info("[INFO] Setting up config/api_keys.json...")
     config_dir = SCRIPT_DIR / "config"
     config_dir.mkdir(parents=True, exist_ok=True)
     
@@ -177,15 +181,15 @@ def setup_api_keys():
     api_keys_example = config_dir / "api_keys.json.example"
     
     if api_keys_file.exists():
-        print("[OK] api_keys.json already exists.")
+        logger.info("[OK] api_keys.json already exists.")
         return
         
     if api_keys_example.exists():
         try:
             shutil.copy(str(api_keys_example), str(api_keys_file))
-            print("[OK] Copied api_keys.json.example to api_keys.json.")
+            logger.info("[OK] Copied api_keys.json.example to api_keys.json.")
         except Exception as e:
-            print(f"[ERROR] Failed to copy example config: {e}")
+            logger.error(f"[ERROR] Failed to copy example config: {e}")
             sys.exit(1)
     else:
         default_config = {
@@ -199,9 +203,9 @@ def setup_api_keys():
         try:
             with open(api_keys_file, "w", encoding="utf-8") as f:
                 json.dump(default_config, f, indent=4)
-            print("[OK] Created default api_keys.json.")
+            logger.info("[OK] Created default api_keys.json.")
         except Exception as e:
-            print(f"[ERROR] Failed to create api_keys.json: {e}")
+            logger.error(f"[ERROR] Failed to create api_keys.json: {e}")
             sys.exit(1)
 
 def write_setup_marker():
@@ -209,15 +213,16 @@ def write_setup_marker():
     try:
         with open(marker_file, "w", encoding="utf-8") as f:
             f.write(f"Setup completed on: {datetime.now().isoformat()}")
-        print("[OK] Wrote setup completion marker.")
+        logger.info("[OK] Wrote setup completion marker.")
     except Exception as e:
-        print(f"[WARN] Failed to write setup marker: {e}")
+        logger.warning(f"[WARN] Failed to write setup marker: {e}")
 
 def main():
+    configure_logging()
     try:
         # STEP 1: Integrity Check
         if check_marker_files():
-            print("[OK] ULTRON base project verified.")
+            logger.info("[OK] ULTRON base project verified.")
         else:
             # STEP 2: Download from GitHub
             success = download_from_github()
@@ -230,7 +235,7 @@ def main():
                 show_manual_download_error()
                 sys.exit(1)
             else:
-                print("[OK] ULTRON base project verified after download.")
+                logger.info("[OK] ULTRON base project verified after download.")
                 
         # STEP 3: Check Python Version
         check_python_version()
@@ -252,27 +257,27 @@ def main():
         
         # STEP 9: Print Success
         print_separator()
-        print(" ULTRON SETUP COMPLETE!")
+        logger.info(" ULTRON SETUP COMPLETE!")
         print_separator()
-        print("")
-        print(" To launch ULTRON:")
-        print("   python main.py")
-        print("   OR double-click START_ULTRON.bat")
-        print("")
-        print(" IMPORTANT: Add your Gemini API key in config/api_keys.json")
-        print(" Get a free key: https://aistudio.google.com/apikey")
+        logger.info("")
+        logger.info(" To launch ULTRON:")
+        logger.info("   python main.py")
+        logger.info("   OR double-click START_ULTRON.bat")
+        logger.info("")
+        logger.info(" IMPORTANT: Add your Gemini API key in config/api_keys.json")
+        logger.info(" Get a free key: https://aistudio.google.com/apikey")
         print_separator()
         
         choice = input("Do you want to launch ULTRON now? (Press Enter to launch, N to exit): ")
         if choice.strip().lower() != 'n':
-            print("[INFO] Launching ULTRON...")
+            logger.info("[INFO] Launching ULTRON...")
             subprocess.run([sys.executable, "main.py"], cwd=str(SCRIPT_DIR))
             
     except KeyboardInterrupt:
-        print("\n[WARN] Setup cancelled by user.")
+        logger.warning("\n[WARN] Setup cancelled by user.")
         sys.exit(1)
     except Exception as e:
-        print(f"\n[ERROR] An unexpected error occurred: {e}")
+        logger.error(f"\n[ERROR] An unexpected error occurred: {e}")
         sys.exit(1)
 
 if __name__ == '__main__':

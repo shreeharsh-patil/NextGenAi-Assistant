@@ -32,6 +32,8 @@ from ui import UltronUI, JarvisUI
 from memory.memory_manager import (
     load_memory, update_memory, format_memory_for_prompt,
 )
+from memory.rag_memory import add as rag_store, recall as rag_recall
+from utils.logger import configure_logging, get_logger
 
 from actions.file_processor import file_processor
 from actions.flight_finder     import flight_finder
@@ -53,7 +55,16 @@ from actions.game_updater      import game_updater
 from actions.system_monitor    import SystemMonitor, get_system_status
 from actions.proactive         import ProactiveEngine
 from actions.web_search        import _news as _fetch_news_sync
+from actions.email_calendar    import (
+    email_send_action,
+    email_read_action,
+    calendar_list_action,
+    calendar_add_action,
+)
 from memory.config_manager     import get_brief_enabled
+
+
+logger = get_logger("ultron.main")
 
 
 def get_base_dir():
@@ -207,7 +218,7 @@ class UltronLive:
                 except Exception:
                     break
             if drained:
-                print(f"[ULTRON] ✋ Interrupted — {drained} audio chunks discarded")
+                logger.info(f"[ULTRON] ✋ Interrupted — {drained} audio chunks discarded")
         self.set_speaking(False)
         if self._turn_done_event:
             self._turn_done_event.clear()
@@ -329,7 +340,7 @@ class UltronLive:
         _cooldown = 4.0  # seconds — covers echo window after speaking ends
         if self._vision_busy or (_now - self._vision_last_time) < _cooldown:
             _wait = max(0, _cooldown - (_now - self._vision_last_time))
-            print(f"[Vision] ⏳ Cooldown active ({_wait:.1f}s remaining) — ignoring duplicate call")
+            logger.info(f"[Vision] ⏳ Cooldown active ({_wait:.1f}s remaining) — ignoring duplicate call")
             return "Vision is still processing the previous request. I will not call this again."
         else:
             self._vision_busy      = True
@@ -340,11 +351,11 @@ class UltronLive:
                 img_b, mime_t = await loop.run_in_executor(None, _capture_camera)
                 self.ui.start_camera_stream()
                 self._vision_cam_active = True
-                print(f"[Vision] 📷 Camera: {len(img_b):,} bytes")
+                logger.info(f"[Vision] 📷 Camera: {len(img_b):,} bytes")
                 _stall = "camera"
             else:
                 img_b, mime_t = await loop.run_in_executor(None, _capture_screen)
-                print(f"[Vision] 🖥️  Screen: {len(img_b):,} bytes")
+                logger.info(f"[Vision] 🖥️  Screen: {len(img_b):,} bytes")
                 _stall = "screen"
             self._pending_vision = (img_b, mime_t, user_text, angle)
             return (
@@ -410,6 +421,28 @@ class UltronLive:
         r = await loop.run_in_executor(None, get_system_status)
         return str(r)
 
+    async def _handle_recall_memory(self, args, loop):
+        query = args.get("query", "")
+        k     = int(args.get("k") or 5)
+        return await loop.run_in_executor(None, lambda: rag_recall(query, k=k)) or \
+            "I don't have any related memory about that."
+
+    async def _handle_email_send(self, args, loop):
+        r = await loop.run_in_executor(None, lambda: email_send_action(args))
+        return r
+
+    async def _handle_email_read(self, args, loop):
+        r = await loop.run_in_executor(None, lambda: email_read_action(args))
+        return r
+
+    async def _handle_calendar_list(self, args, loop):
+        r = await loop.run_in_executor(None, lambda: calendar_list_action(args))
+        return r
+
+    async def _handle_calendar_add(self, args, loop):
+        r = await loop.run_in_executor(None, lambda: calendar_add_action(args))
+        return r
+
     async def _handle_shutdown(self, args, loop):
         self.ui.write_log("SYS: Shutdown requested.")
         self.speak("Goodbye, sir.")
@@ -440,6 +473,11 @@ class UltronLive:
         "game_updater": _handle_game_updater,
         "flight_finder": _handle_flight_finder,
         "system_status": _handle_system_status,
+        "recall_memory": _handle_recall_memory,
+        "email_send": _handle_email_send,
+        "email_read": _handle_email_read,
+        "calendar_list": _handle_calendar_list,
+        "calendar_add": _handle_calendar_add,
         "shutdown_ultron": _handle_shutdown,
         "shutdown_jarvis": _handle_shutdown,
     }
@@ -448,7 +486,7 @@ class UltronLive:
         name = fc.name
         args = dict(fc.args or {})
 
-        print(f"[JARVIS] 🔧 {name}  {args}")
+        logger.info(f"[JARVIS] 🔧 {name}  {args}")
         self.set_app_state("THINKING")
 
         if name == "save_memory":
@@ -457,7 +495,7 @@ class UltronLive:
             value    = args.get("value", "")
             if key and value:
                 update_memory({category: {key: {"value": value}}})
-                print(f"[Memory] 💾 save_memory: {category}/{key} = {value}")
+                logger.info(f"[Memory] 💾 save_memory: {category}/{key} = {value}")
             if not self.ui.muted:
                 self.set_app_state("LISTENING")
             return types.FunctionResponse(
@@ -483,7 +521,7 @@ class UltronLive:
         if not self.ui.muted:
             self.set_app_state("LISTENING")
 
-        print(f"[ULTRON] 📤 {name} → {str(result)[:80]}")
+        logger.info(f"[ULTRON] 📤 {name} → {str(result)[:80]}")
         return types.FunctionResponse(
             id=fc.id, name=name,
             response={"result": result}
@@ -495,7 +533,7 @@ class UltronLive:
             await self.session.send_realtime_input(media=msg)
 
     async def _listen_audio(self):
-        print("[ULTRON] 🎤 Mic started")
+        logger.info("[ULTRON] 🎤 Mic started")
         loop = asyncio.get_event_loop()
 
         def callback(indata, frames, time_info, status):
@@ -516,15 +554,15 @@ class UltronLive:
                 blocksize=CHUNK_SIZE,
                 callback=callback,
             ):
-                print("[ULTRON] 🎤 Mic stream open")
+                logger.info("[ULTRON] 🎤 Mic stream open")
                 while True:
                     await asyncio.sleep(0.02)
         except Exception as e:
-            print(f"[ULTRON] ❌ Mic: {e}")
+            logger.error(f"[ULTRON] ❌ Mic: {e}")
             raise
 
     async def _receive_audio(self):
-        print("[ULTRON] 👂 Recv started")
+        logger.info("[ULTRON] 👂 Recv started")
         out_buf, in_buf = [], []
 
         try:
@@ -574,6 +612,7 @@ class UltronLive:
                             full_in = " ".join(in_buf).strip()
                             if full_in:
                                 self.ui.write_log(f"You: {full_in}")
+                                asyncio.create_task(asyncio.to_thread(rag_store, full_in, "user"))
                                 if self._dashboard:
                                     asyncio.create_task(self._dashboard.broadcast({
                                         "type": "log", "speaker": "user",
@@ -585,6 +624,7 @@ class UltronLive:
                             full_out = " ".join(out_buf).strip()
                             if full_out:
                                 self.ui.write_log(f"{self._asst_name}: {full_out}")
+                                asyncio.create_task(asyncio.to_thread(rag_store, full_out, "assistant"))
                                 if self._dashboard:
                                     asyncio.create_task(self._dashboard.broadcast({
                                         "type": "log", "speaker": "jarvis",
@@ -599,7 +639,7 @@ class UltronLive:
                                 img_b, mime_t, question, angle = self._pending_vision
                                 self._pending_vision = None
                                 b64 = _b64.b64encode(img_b).decode("ascii")
-                                print(f"[Vision] 📤 {len(img_b):,} bytes (angle={angle}) → main session")
+                                logger.info(f"[Vision] 📤 {len(img_b):,} bytes (angle={angle}) → main session")
                                 await self.session.send_client_content(
                                     turns={"parts": [
                                         {"inline_data": {"mime_type": mime_t, "data": b64}},
@@ -627,19 +667,19 @@ class UltronLive:
                     if response.tool_call:
                         fn_responses = []
                         for fc in response.tool_call.function_calls:
-                            print(f"[ULTRON] 📞 {fc.name}")
+                            logger.info(f"[ULTRON] 📞 {fc.name}")
                             fr = await self._execute_tool(fc)
                             fn_responses.append(fr)
                         await self.session.send_tool_response(
                             function_responses=fn_responses
                         )
         except Exception as e:
-            print(f"[ULTRON] ❌ Recv: {e}")
+            logger.error(f"[ULTRON] ❌ Recv: {e}")
             traceback.print_exc()
             raise
 
     async def _play_audio(self):
-        print("[ULTRON] 🔊 Play started")
+        logger.info("[ULTRON] 🔊 Play started")
 
         stream = sd.RawOutputStream(
             samplerate=RECEIVE_SAMPLE_RATE,
@@ -671,7 +711,7 @@ class UltronLive:
                 except (RuntimeError, asyncio.CancelledError):
                     break   # executor shutting down — exit cleanly
         except Exception as e:
-            print(f"[ULTRON] ❌ Play: {e}")
+            logger.error(f"[ULTRON] ❌ Play: {e}")
             raise
         finally:
             self.set_speaking(False)
@@ -769,7 +809,7 @@ class UltronLive:
                         turn_complete=True,
                     )
                 except Exception as e:
-                    print(f"[Monitor] ⚠️ Could not send alert: {e}")
+                    logger.warning(f"[Monitor] ⚠️ Could not send alert: {e}")
 
     # ── Proactive mode ──────────────────────────────────────────────────────────
 
@@ -804,7 +844,7 @@ class UltronLive:
                 )
                 self.ui.write_log("SYS: Proactive check-in.")
             except Exception as e:
-                print(f"[Proactive] ⚠️ {e}")
+                logger.warning(f"[Proactive] ⚠️ {e}")
 
     # ── Phone audio relay ────────────────────────────────────────────────────────
 
@@ -877,11 +917,11 @@ class UltronLive:
                             )
                             self.ui.write_log(f"[Web]: {text}")
                 else:
-                    print(f"[Dashboard] Dropped item (no session)")
+                    logger.warning(f"[Dashboard] Dropped item (no session)")
             except asyncio.TimeoutError:
                 pass
             except Exception as e:
-                print(f"[Dashboard] Command error: {e}")
+                logger.error(f"[Dashboard] Command error: {e}")
                 await asyncio.sleep(0.1)
 
     # ── main loop ───────────────────────────────────────────────────────────
@@ -899,12 +939,12 @@ class UltronLive:
             asyncio.create_task(self._process_dashboard_commands())
             # webbrowser.open(f"http://127.0.0.1:{PORT}")
         except Exception as e:
-            print(f"[Dashboard] Disabled: {e}")
+            logger.warning(f"[Dashboard] Disabled: {e}")
             self._dashboard = None
 
         while True:
             try:
-                print("[ULTRON] Connecting...")
+                logger.info("[ULTRON] Connecting...")
                 self.set_app_state("THINKING")
                 config = self._build_config()
 
@@ -931,7 +971,7 @@ class UltronLive:
                     self._vision_last_time     = 0.0
                     self._interrupted          = False
 
-                    print("[ULTRON] Connected.")
+                    logger.info("[ULTRON] Connected.")
                     self.set_app_state("LISTENING")
                     self.ui.write_log("SYS: ULTRON online.")
 
@@ -969,7 +1009,7 @@ class UltronLive:
                 # exception escape the while-loop and causing asyncio.run() to
                 # start shutdown — resulting in "executor after shutdown" errors).
                 err_str = str(e)
-                print(f"[JARVIS] Error ({type(e).__name__}): {e}")
+                logger.error(f"[JARVIS] Error ({type(e).__name__}): {e}")
                 traceback.print_exc()
 
                 # Invalid / missing / broken API key — stop hammering the API, prompt re-configuration
@@ -983,7 +1023,7 @@ class UltronLive:
                     self.ui.prompt_reconfig()
                     while not self.ui._win._ready:
                         await asyncio.sleep(1)
-                    print("[JARVIS] New API key saved — reconnecting...")
+                    logger.info("[JARVIS] New API key saved — reconnecting...")
                     _conn_backoff = 3
                     continue
 
@@ -1011,7 +1051,7 @@ class UltronLive:
                 await self._dashboard.broadcast({"type": "status", "state": "sleeping"})
 
             delay = getattr(self, "_conn_backoff", 3)
-            print(f"[ULTRON] Reconnecting in {delay}s...")
+            logger.info(f"[ULTRON] Reconnecting in {delay}s...")
             await asyncio.sleep(delay)
 
 JarvisLive = UltronLive
@@ -1028,10 +1068,11 @@ def _ensure_single_instance():
         sock.bind(("127.0.0.1", 39152))
         _single_instance_sock = sock
     except OSError:
-        print("[ULTRON] ⚠️ ULTRON is already running in another process! Exiting duplicate instance to prevent window flickering.", file=sys.stderr)
+        logger.warning("ULTRON is already running in another instance — exiting duplicate process.")
         sys.exit(0)
 
 def main():
+    configure_logging()
     _ensure_single_instance()
     ui = UltronUI("face.png")
 
@@ -1041,7 +1082,7 @@ def main():
         try:
             asyncio.run(ultron.run())
         except KeyboardInterrupt:
-            print("\n🔴 Shutting down...")
+            logger.info("Shutting down...")
 
     threading.Thread(target=runner, daemon=True).start()
     ui.root.mainloop()

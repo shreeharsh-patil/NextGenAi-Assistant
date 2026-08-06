@@ -21,6 +21,10 @@ from pathlib import Path
 
 import psutil
 
+from utils.logger import configure_logging, get_logger
+
+logger = get_logger("ultron.wake")
+
 # ── Configuration ─────────────────────────────────────────────────────────────
 WAKE_PHRASES = [
     "wake up ultron",
@@ -85,13 +89,13 @@ def _launch_ultron() -> bool:
             )
         return True
     except Exception as e:
-        print(f"[WakeService] ❌ Failed to launch ULTRON: {e}")
+        logger.error(f"[WakeService] ❌ Failed to launch ULTRON: {e}")
         return False
 
 
 def _log(msg: str):
     ts = time.strftime("%H:%M:%S")
-    print(f"[WakeService {ts}] {msg}")
+    logger.info(f"[WakeService {ts}] {msg}")
 
 
 # ── Main Listener Loop ───────────────────────────────────────────────────────
@@ -102,13 +106,14 @@ def main():
     with the Google Web Speech API (free, no key required).
     Falls back to offline Vosk if available.
     """
+    configure_logging()
     try:
         import speech_recognition as sr
     except ImportError:
-        print("=" * 60)
-        print("  SpeechRecognition is required for the wake service.")
-        print("  Install it with:  pip install SpeechRecognition PyAudio")
-        print("=" * 60)
+        logger.info("=" * 60)
+        logger.info("  SpeechRecognition is required for the wake service.")
+        logger.info("  Install it with:  pip install SpeechRecognition PyAudio")
+        logger.info("=" * 60)
         sys.exit(1)
 
     recognizer = sr.Recognizer()
@@ -120,8 +125,8 @@ def main():
     try:
         mic = sr.Microphone()
     except Exception as e:
-        print(f"[WakeService] ❌ No microphone found: {e}")
-        print("[WakeService] Make sure PyAudio is installed: pip install PyAudio")
+        logger.error(f"[WakeService] ❌ No microphone found: {e}")
+        logger.info("[WakeService] Make sure PyAudio is installed: pip install PyAudio")
         sys.exit(1)
 
     _log("🎙️  Wake word service started")

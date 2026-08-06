@@ -44,3 +44,14 @@ WMI; sys_platform == "win32"
 # ── Offline / cloud TTS engines (core/tts.py) ────────────────────────────────
 edge-tts
 miniaudio
+
+# ── Semantic RAG memory (memory/rag_memory.py) ───────────────────────────────
+fastembed
+
+# ── Email + Calendar (actions/email_calendar.py) ─────────────────────────────
+google-api-python-client
+google-auth-oauthlib
+google-auth-httplib2
+
+# ── Testing (pytest) ─────────────────────────────────────────────────────────
+pytest

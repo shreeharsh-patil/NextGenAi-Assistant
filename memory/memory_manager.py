@@ -102,6 +102,8 @@ def _recursive_update(target: dict, updates: dict) -> bool:
                 changed = True
         else:
             new_val  = _truncate_value(str(value["value"] if isinstance(value, dict) else value))
+            if not new_val.strip():
+                continue
             entry    = {"value": new_val, "updated": datetime.now().strftime("%Y-%m-%d")}
             existing = target.get(key, {})
             if not isinstance(existing, dict) or existing.get("value") != new_val:
