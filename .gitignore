@@ -41,6 +41,7 @@ memory/long_term.json
 memory/cmr_records.json
 memory/reminders.json
 memory/rag_store.json
+memory/scheduled_tasks.json
 
 # ─── Logs ─────────────────────────────────────────
 logs/

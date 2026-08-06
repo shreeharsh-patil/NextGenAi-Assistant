@@ -48,6 +48,9 @@ miniaudio
 # ── Semantic RAG memory (memory/rag_memory.py) ───────────────────────────────
 fastembed
 
+# ── Offline OCR (actions/screen_ocr.py) ──────────────────────────────────────
+rapidocr-onnxruntime
+
 # ── Email + Calendar (actions/email_calendar.py) ─────────────────────────────
 google-api-python-client
 google-auth-oauthlib

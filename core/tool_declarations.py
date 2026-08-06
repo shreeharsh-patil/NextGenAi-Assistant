@@ -502,4 +502,87 @@ TOOL_DECLARATIONS = [
             "required": ["title", "date", "time"]
         }
     },
+    {
+        "name": "home_assistant",
+        "description": (
+            "Controls smart-home devices through Home Assistant. "
+            "Use for: turning lights/switches on or off, toggling devices, setting light "
+            "brightness, setting numeric values, controlling media players (play/pause/next/"
+            "previous/volume), and climate control (temperature, heat/cool/auto/off mode). "
+            "Entity names are matched by friendly name or entity_id."
+        ),
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "action": {"type": "STRING", "description": "states | state | turn_on | turn_off | toggle | set_brightness | set_value | media_play | media_pause | media_next | media_previous | media_volume | climate_set | climate_mode (default: states)"},
+                "entity": {"type": "STRING", "description": "Device name or entity_id (e.g. 'living room light', 'switch.office')"},
+                "filter": {"type": "STRING", "description": "Optional keyword filter for the 'states' action"},
+                "value":  {"type": "STRING", "description": "Numeric value: brightness 0-100, volume 0-100, or target temperature"},
+                "mode":   {"type": "STRING", "description": "HVAC mode for climate_mode: heat | cool | auto | dry | fan_only | off"},
+                "limit":  {"type": "INTEGER", "description": "Max results for states (default: 20)"},
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "screen_ocr",
+        "description": (
+            "Extracts readable text from the screen (or an image file) using offline OCR. "
+            "Use when the user asks to read what's on screen, grab text from an area, "
+            "or translate on-screen text. After the text is returned, read it or translate "
+            "it into the user's language in your reply. "
+            "Regions: 'screen', 'left,top,width,height' (pixels), or 'center,WxH'."
+        ),
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "region":    {"type": "STRING", "description": "Region to scan: 'screen' (default), 'left,top,width,height', or 'center,WxH'"},
+                "file_path": {"type": "STRING", "description": "Optional path to an image file to OCR instead of the screen"},
+            },
+            "required": []
+        }
+    },
+    {
+        "name": "schedule_task",
+        "description": (
+            "Schedules a RECURRING task that ULTRON runs automatically. "
+            "Use for repeated requests like 'remind me every day at 9am to drink water', "
+            "'give me a weather briefing every morning', or 'check emails every 2 hours'. "
+            "Cadences: 'every N minutes/hours/days', 'daily at HH:MM', "
+            "'weekly at HH:MM' or 'every Monday at HH:MM', 'monthly on DD at HH:MM', "
+            "or 'startup' (runs once when ULTRON launches). "
+            "For a ONE-TIME reminder use the 'reminder' tool instead."
+        ),
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "cadence": {"type": "STRING", "description": "Recurrence, e.g. 'daily at 09:00', 'every 2 hours', 'weekly on Monday at 08:00', 'startup'"},
+                "prompt":  {"type": "STRING", "description": "What the assistant should do when this task fires (imperative, e.g. 'Give me a weather briefing')"},
+                "name":    {"type": "STRING", "description": "Optional short label for the task (defaults to the prompt)"},
+            },
+            "required": ["cadence", "prompt"]
+        }
+    },
+    {
+        "name": "list_scheduled_tasks",
+        "description": (
+            "Lists all scheduled recurring tasks: their cadence, next run time, and status. "
+            "Call when the user asks what tasks are scheduled, or asks to see their schedule."
+        ),
+        "parameters": {"type": "OBJECT", "properties": {}, "required": []}
+    },
+    {
+        "name": "cancel_scheduled_task",
+        "description": (
+            "Cancels (removes) a scheduled recurring task. Call when the user wants to "
+            "stop or delete a previously scheduled task."
+        ),
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "name": {"type": "STRING", "description": "Task name or ID to cancel"},
+            },
+            "required": ["name"]
+        }
+    },
 ]

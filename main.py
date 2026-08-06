@@ -62,6 +62,16 @@ from actions.email_calendar    import (
     calendar_add_action,
 )
 from memory.config_manager     import get_brief_enabled
+from actions.home_assistant    import home_assistant_action
+from actions.screen_ocr        import screen_ocr_action
+from memory.task_scheduler     import (
+    add_task as scheduler_add_task,
+    remove_task as scheduler_remove_task,
+    list_tasks as scheduler_list_tasks,
+    get_due as scheduler_get_due,
+    reschedule as scheduler_reschedule,
+    format_tasks as scheduler_format_tasks,
+)
 
 
 logger = get_logger("ultron.main")
@@ -443,6 +453,42 @@ class UltronLive:
         r = await loop.run_in_executor(None, lambda: calendar_add_action(args))
         return r
 
+    async def _handle_home_assistant(self, args, loop):
+        r = await loop.run_in_executor(None, lambda: home_assistant_action(args))
+        return r
+
+    async def _handle_screen_ocr(self, args, loop):
+        r = await loop.run_in_executor(None, lambda: screen_ocr_action(args, player=self.ui))
+        return r
+
+    async def _handle_schedule_task(self, args, loop):
+        try:
+            task = scheduler_add_task(
+                cadence=args.get("cadence", ""),
+                prompt=args.get("prompt", ""),
+                name=args.get("name"),
+            )
+            return (f"Scheduled task '{task['name']}' running "
+                    f"{task['cadence']}. Next run: {task['next_run'] or 'on next launch'}.")
+        except ValueError as e:
+            return str(e)
+        except Exception as e:
+            logger.error("[Scheduler] add failed: %s", e)
+            return f"Could not schedule the task: {e}"
+
+    async def _handle_list_scheduled_tasks(self, args, loop):
+        return scheduler_format_tasks(scheduler_list_tasks())
+
+    async def _handle_cancel_scheduled_task(self, args, loop):
+        name = str(args.get("name") or "").strip().lower()
+        if not name:
+            return "cancel_scheduled_task needs a task name or ID."
+        for t in scheduler_list_tasks():
+            if name in (str(t.get("id") or "").lower(), str(t.get("name") or "").lower()):
+                scheduler_remove_task(t["id"])
+                return f"Cancelled scheduled task '{t['name']}'."
+        return f"No scheduled task matching '{name}'."
+
     async def _handle_shutdown(self, args, loop):
         self.ui.write_log("SYS: Shutdown requested.")
         self.speak("Goodbye, sir.")
@@ -478,6 +524,11 @@ class UltronLive:
         "email_read": _handle_email_read,
         "calendar_list": _handle_calendar_list,
         "calendar_add": _handle_calendar_add,
+        "home_assistant": _handle_home_assistant,
+        "screen_ocr": _handle_screen_ocr,
+        "schedule_task": _handle_schedule_task,
+        "list_scheduled_tasks": _handle_list_scheduled_tasks,
+        "cancel_scheduled_task": _handle_cancel_scheduled_task,
         "shutdown_ultron": _handle_shutdown,
         "shutdown_jarvis": _handle_shutdown,
     }
@@ -926,6 +977,24 @@ class UltronLive:
 
     # ── main loop ───────────────────────────────────────────────────────────
 
+    async def _run_task_scheduler(self):
+        """Fire due scheduled tasks by injecting a synthetic client turn."""
+        await asyncio.sleep(15)  # let the session settle after connect
+        while True:
+            try:
+                for task in scheduler_get_due():
+                    scheduler_reschedule(task["id"])
+                    self.ui.write_log(f"SYS: Scheduled task due — {task['name']}")
+                    logger.info("[Scheduler] 🔔 firing '%s'", task["name"])
+                    prompt = task.get("prompt") or task["name"]
+                    await self.session.send_client_content(
+                        turns={"parts": [{"text": f"[SCHEDULED TASK] {prompt}"}]},
+                        turn_complete=True,
+                    )
+            except Exception as e:
+                logger.error("[Scheduler] loop error: %s", e)
+            await asyncio.sleep(30)
+
     async def run(self):
         self._loop = asyncio.get_event_loop()
 
@@ -984,6 +1053,7 @@ class UltronLive:
                     tg.create_task(self._play_audio())
                     tg.create_task(self._run_system_monitor())
                     tg.create_task(self._run_proactive_mode())
+                    tg.create_task(self._run_task_scheduler())
                     if self._dashboard:
                         tg.create_task(self._relay_phone_audio())
 
